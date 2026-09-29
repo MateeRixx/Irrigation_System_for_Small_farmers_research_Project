@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Methodology — Smart Eco-VRI{% endblock %}
+{% block content %}
+<div class="container page">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Research notes</p>
+      <h1>Methodology</h1>
+      <p class="muted">Every number the system produces, and how it is computed.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('index') }}" class="btn btn-ghost"><i data-lucide="arrow-left"></i>Home</a>
+    </div>
+  </div>
+
+  <div class="method-grid">
+    <section class="card method-card">
+      <span class="method-step">01</span>
+      <h2>Vegetation index (VARI)</h2>
+      <p>Every pixel of the selected imagery is converted to the Visible Atmospherically
+         Resistant Index — a greenness measure computed from standard RGB bands, so no
+         infrared sensor is required.</p>
+      <div class="formula">VARI = (G &minus; R) / (G + R &minus; B + &epsilon;)</div>
+      <p class="muted method-note">Values are min-max normalized to [0, 1] before clustering.</p>
+    </section>
+
+    <section class="card method-card">
+      <span class="method-step">02</span>
+      <h2>Elbow method for k</h2>
+      <p>K-Means is fitted for k = 1&hellip;9 on a downsampled pixel set. The optimal
+         cluster count is the k with maximum perpendicular distance from the chord
+         connecting the first and last WCSS points.</p>
+      <div class="formula">k* = argmax<sub>k</sub> &nbsp;d(WCSS<sub>k</sub>, &nbsp;line<sub>1&rarr;9</sub>)</div>
+      <p class="muted method-note">You can override k* manually per analysis.</p>
+    </section>
+
+    <section class="card method-card">
+      <span class="method-step">03</span>
+      <h2>Cluster quality (silhouette)</h2>
+      <p>Each result is scored with the silhouette coefficient on a 5,000-pixel sample —
+         how similar a pixel is to its own zone versus the next-best zone.</p>
+      <div class="formula">s = (b &minus; a) / max(a, b) &nbsp;&isin; [&minus;1, 1]</div>
+      <p class="muted method-note">&gt; 0.5 is considered well separated; the stored score
+         lets you compare runs across fields and seasons.</p>
+    </section>
+
+    <section class="card method-card">
+      <span class="method-step">04</span>
+      <h2>Soil-tank water balance</h2>
+      <p>Each zone&rsquo;s cluster centre maps to a soil class (sandy / loamy / clayey)
+         with a field-capacity table. The deficit is scaled by the current root depth
+         of a 200&nbsp;mm profile.</p>
+      <div class="formula">D = (FC &minus; &theta;) &times; Z<sub>r</sub> &nbsp;&middot;&nbsp;
+         N = D &minus; R<sub>7d</sub>/2</div>
+      <p class="muted method-note">Half of the 7-day forecast rain is credited against
+         the demand; if rain covers the deficit the run time drops to zero.</p>
+    </section>
+
+    <section class="card method-card">
+      <span class="method-step">05</span>
+      <h2>Run time</h2>
+      <p>Net irrigation requirement is converted to valve-open minutes at a nominal
+         application rate of 15&nbsp;mm/hour.</p>
+      <div class="formula">t (min) = N / 15 &times; 60</div>
+      <p class="muted method-note">The ESP32 receives this per zone from
+         <code>/api/zones/&lt;farm_id&gt;</code>.</p>
+    </section>
+
+    <section class="card method-card">
+      <span class="method-step">06</span>
+      <h2>Imagery pipeline</h2>
+      <p>Map selections pull an exact bounding-box window from Esri World Imagery
+         (free, no API key). Uploads accept any aerial screenshot. Both paths converge
+         on the same clustering code.</p>
+      <div class="formula">bbox &rarr; export &rarr; VARI &rarr; K-Means &rarr; zones</div>
+      <p class="muted method-note">Tested to z22 overzoom — imagery beyond native z18
+         is upscaled rather than blanked.</p>
+    </section>
+  </div>
+</div>
+{% endblock %}

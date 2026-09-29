@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Smart Eco-VRI{% endblock %}</title>
+  <meta name="description" content="Satellite-driven irrigation zoning for smallholder farms — VARI clustering, rain-aware schedules, ESP32-ready API.">
+  <meta property="og:title" content="Smart Eco-VRI">
+  <meta property="og:description" content="Draw irrigation zones from satellite imagery. Rain-aware, low-cost precision irrigation for smallholder farms.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1514864151880-d1bef4892f29?w=1200&h=630&fit=crop">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232F6B3D'/%3E%3Cpath d='M32 48V24' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M32 34c-9 0-14-7-14-16 9 0 14 7 14 16zm0 6c9 0 14-7 14-18-9 0-14 8-14 18z' fill='white'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+<header class="nav {% block nav_class %}{% endblock %}">
+  <div class="nav-inner">
+    <a class="brand" href="{{ url_for('index') }}" aria-label="Smart Eco-VRI home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" width="26" height="26"><rect width="64" height="64" rx="14" fill="#2F6B3D"/><path d="M32 48V24" stroke="white" stroke-width="4" stroke-linecap="round"/><path d="M32 34c-9 0-14-7-14-16 9 0 14 7 14 16zm0 6c9 0 14-7 14-18-9 0-14 8-14 18z" fill="white"/></svg>
+      </span>
+      <span class="brand-name">Eco-VRI</span>
+    </a>
+
+    <nav class="nav-links" id="nav-links" aria-label="Main">
+      {% if session.get('user_id') %}
+        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}is-active{% endif %}">
+          <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('analyze') }}" class="nav-link {% if request.endpoint in ('analyze', 'analysis_detail', 'analyze_map') %}is-active{% endif %}">
+          <i data-lucide="map"></i><span>Map analyzer</span>
+        </a>
+        <a href="{{ url_for('methodology') }}" class="nav-link {% if request.endpoint == 'methodology' %}is-active{% endif %}">
+          <i data-lucide="book-open"></i><span>Methodology</span>
+        </a>
+      {% else %}
+        <a href="{{ url_for('index') }}#how" class="nav-link nav-hide-sm">How it works</a>
+        <a href="{{ url_for('index') }}#features" class="nav-link nav-hide-sm">Features</a>
+        <a href="{{ url_for('methodology') }}" class="nav-link">Methodology</a>
+      {% endif %}
+    </nav>
+
+    <div class="nav-actions">
+      {% if session.get('user_id') %}
+        <span class="user-chip"><i data-lucide="user"></i>{{ session.get('username') }}</span>
+        <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-sm"><i data-lucide="log-out"></i>Sign out</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="btn btn-ghost btn-sm">Log in</a>
+        <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Get started</a>
+      {% endif %}
+      <button class="nav-burger" id="nav-burger" aria-label="Toggle menu" aria-expanded="false">
+        <i data-lucide="menu"></i>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="container flash-wrap">
+        {% for category, msg in messages %}
+          <div class="flash flash-{{ category }}">
+            <i data-lucide="{% if category == 'success' %}check{% elif category == 'danger' %}x{% else %}info{% endif %}"></i>
+            <span>{{ msg }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.min.js"></script>
+<script>if (window.lucide) lucide.createIcons();</script>
+<script>
+  (function () {
+    var burger = document.getElementById("nav-burger");
+    if (burger) burger.addEventListener("click", function () {
+      var nav = document.getElementById("nav-links");
+      var open = nav.classList.toggle("is-open");
+      burger.setAttribute("aria-expanded", String(open));
+    });
+  })();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

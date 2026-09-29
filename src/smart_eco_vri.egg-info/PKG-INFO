@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: smart-eco-vri
+Version: 0.1.0
+Summary: Satellite-driven irrigation zoning for smallholder farms
+Requires-Python: >=3.10
+License-File: LICENSE
+Requires-Dist: Flask>=3.0
+Requires-Dist: flask-login>=0.6
+Requires-Dist: opencv-python-headless>=4.8
+Requires-Dist: numpy>=1.26
+Requires-Dist: scikit-learn>=1.3
+Requires-Dist: Werkzeug>=3.0
+Dynamic: license-file

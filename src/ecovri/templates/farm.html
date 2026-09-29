@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ farm.name }} — Smart Eco-VRI{% endblock %}
+{% block content %}
+<div class="container page">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Farm</p>
+      <h1>{{ farm.name }}</h1>
+      <p class="muted mono">{{ farm.lat }}, {{ farm.lon }} &middot; added {{ farm.created_at[:10] }}</p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('analyze') }}" class="btn btn-primary"><i data-lucide="plus"></i>New analysis</a>
+      <a href="{{ url_for('api_zones', farm_id=farm.id) }}" class="btn btn-line" target="_blank" rel="noopener">
+        <i data-lucide="braces"></i>Zones API
+      </a>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-ghost"><i data-lucide="arrow-left"></i>Dashboard</a>
+      <form method="POST" action="{{ url_for('delete_farm', farm_id=farm.id) }}"
+            onsubmit="return confirm('Delete farm “{{ farm.name }}” and ALL its analyses? This cannot be undone.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-ghost" title="Delete farm" aria-label="Delete farm">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Soil moisture readings</h2>
+      <span class="mono muted">POST /api/moisture &middot; last 300 readings</span>
+    </div>
+    <div class="moisture-chart" id="moisture-chart" data-farm="{{ farm.id }}">
+      <p class="muted">Loading readings…</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Analysis history</h2></div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Zones</th><th>Silhouette</th><th>Rain</th><th>When</th><th></th></tr></thead>
+        <tbody>
+          {% for a in analyses %}
+          <tr>
+            <td><span class="badge">{{ a.k }}</span></td>
+            <td class="mono {% if a.silhouette and a.silhouette >= 0.5 %}score-good{% elif a.silhouette and a.silhouette < 0.25 %}score-weak{% endif %}">
+              {{ '%.3f'|format(a.silhouette) if a.silhouette is not none else '—' }}
+            </td>
+            <td class="mono">{{ a.rain_mm }} mm</td>
+            <td class="mono muted">{{ a.created_at[:16].replace('T',' ') }}</td>
+            <td class="row-action">
+              <a href="{{ url_for('analysis_detail', analysis_id=a.id) }}" class="btn btn-sm">View</a>
+              <form method="POST" action="{{ url_for('delete_analysis', analysis_id=a.id) }}"
+                    class="row-delete"
+                    onsubmit="return confirm('Delete this analysis? This cannot be undone.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ url_for('farm_detail', farm_id=farm.id) }}">
+                <button type="submit" class="btn btn-ghost btn-sm" title="Delete analysis" aria-label="Delete analysis">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="empty">
+            <p>No analyses for this farm yet.</p>
+            <a href="{{ url_for('analyze') }}" class="btn btn-primary btn-sm">Run one now</a>
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Soil-moisture time series, one polyline per zone
+  (function () {
+    const box = document.getElementById('moisture-chart');
+    const farmId = box.dataset.farm;
+    const COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'];
+
+    fetch(`/api/moisture?farm_id=${farmId}`)
+      .then(r => r.json())
+      .then(data => {
+        const rs = data.readings || [];
+        if (!rs.length) {
+          box.innerHTML =
+            '<div class="empty"><p>No readings yet.</p>' +
+            '<p class="muted">Your controller can post soil-moisture values to ' +
+            '<code>POST /api/moisture</code> — they will chart here.</p></div>';
+          return;
+        }
+        const zones = [...new Set(rs.map(r => r.zone_id))].sort();
+        const W = 760, H = 240, padL = 44, padB = 34, padT = 14, padR = 12;
+        const times = rs.map(r => new Date(r.recorded_at + 'Z').getTime());
+        const t0 = Math.min(...times), t1 = Math.max(...times);
+        const tSpan = Math.max(1, t1 - t0);
+        const x = t => padL + ((t - t0) / tSpan) * (W - padL - padR);
+        const y = v => padT + (1 - v) * (H - padT - padB); // moisture 0..1
+
+        let svg = `<svg viewBox="0 0 ${W} ${H}" class="chart-svg" role="img" aria-label="Soil moisture over time">`;
+        for (let g = 0; g <= 4; g++) {
+          const v = g / 4, gy = y(v);
+          svg += `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="#e2e6e0"/>`;
+          svg += `<text x="${padL - 8}" y="${gy + 4}" text-anchor="end" class="chart-tick">${(v * 100).toFixed(0)}%</text>`;
+        }
+        zones.forEach(z => {
+          const pts = rs.filter(r => r.zone_id === z)
+            .map(r => `${x(new Date(r.recorded_at + 'Z').getTime())},${y(Math.min(1, r.moisture))}`);
+          if (!pts.length) return;
+          const color = COLORS[(z - 1) % COLORS.length];
+          svg += `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;
+          rs.filter(r => r.zone_id === z).forEach(r => {
+            svg += `<circle cx="${x(new Date(r.recorded_at + 'Z').getTime())}" cy="${y(Math.min(1, r.moisture))}" r="3.5" fill="${color}"/>`;
+          });
+        });
+        svg += `<text x="${(W + padL) / 2}" y="${H - 6}" text-anchor="middle" class="chart-tick">time →</text>`;
+        svg += `</svg>`;
+
+        const legend = zones.map(z =>
+          `<span class="legend-item"><span class="zone-dot zone-dot-${z}"></span>Zone ${z}</span>`
+        ).join('');
+        box.innerHTML = `<div class="chart-legend">${legend}</div>${svg}`;
+      })
+      .catch(() => { box.innerHTML = '<p class="muted">Readings unavailable right now.</p>'; });
+  })();
+</script>
+{% endblock %}

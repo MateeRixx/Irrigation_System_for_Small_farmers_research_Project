@@ -1,0 +1,11 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+*.py[cod]
+irrigation.db
+data/
+src/ecovri/static/uploads/*
+src/ecovri/static/results/*
+!src/ecovri/static/uploads/.gitkeep
+!src/ecovri/static/results/.gitkeep

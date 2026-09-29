@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Page not found — Smart Eco-VRI{% endblock %}
+{% block content %}
+<div class="container page center-page">
+  <p class="eyebrow">Error 404</p>
+  <h1>That page isn&rsquo;t in the field</h1>
+  <p class="muted">The link may be outdated, or the record was deleted.</p>
+  <div class="page-actions" style="justify-content:center">
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Back home</a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-line">Dashboard</a>
+  </div>
+</div>
+{% endblock %}

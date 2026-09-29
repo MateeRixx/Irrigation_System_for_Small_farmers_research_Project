@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Analysis {{ a.id }} — Smart Eco-VRI{% endblock %}
+{% block content %}
+<div class="container page">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Analysis {% if a.farm_name %}&middot; {{ a.farm_name }}{% endif %}</p>
+      <h1>Zone map &amp; schedule</h1>
+      <p class="muted mono">
+        {{ a.created_at[:16].replace('T',' ') }} UTC &middot; k={{ a.k }} (auto {{ a.auto_k }}) &middot; rain {{ a.rain_mm }} mm / 7d
+      </p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('export_csv', analysis_id=a.id) }}" class="btn btn-line"><i data-lucide="file-spreadsheet"></i>CSV</a>
+      <a href="{{ url_for('export_json', analysis_id=a.id) }}" class="btn btn-line"><i data-lucide="braces"></i>JSON</a>
+      <a href="{{ url_for('analyze') }}" class="btn btn-primary"><i data-lucide="plus"></i>New analysis</a>
+      <form method="POST" action="{{ url_for('delete_analysis', analysis_id=a.id) }}"
+            onsubmit="return confirm('Delete this analysis? This cannot be undone.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ url_for('dashboard') }}">
+        <button type="submit" class="btn btn-ghost" title="Delete analysis" aria-label="Delete analysis">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {% if a.rain_mm > 5 %}
+  <div class="flash flash-warning flash-standalone">
+    <i data-lucide="cloud-rain"></i>
+    <span>{{ a.rain_mm }} mm of rain is forecast over the next 7 days — consider skipping irrigation or reducing every run time.</span>
+  </div>
+  {% endif %}
+
+  <div class="metric-row">
+    <div class="metric">
+      <span class="metric-label">Zones</span>
+      <strong class="metric-value">{{ a.k }}</strong>
+      <span class="metric-sub">elbow chose {{ a.auto_k }}</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Silhouette</span>
+      <strong class="metric-value {% if a.silhouette and a.silhouette >= 0.5 %}is-good{% elif a.silhouette and a.silhouette < 0.25 %}is-weak{% endif %}">
+        {{ '%.3f'|format(a.silhouette) if a.silhouette is not none else '—' }}
+      </strong>
+      <span class="metric-sub">{% if a.silhouette and a.silhouette >= 0.5 %}well separated{% elif a.silhouette %}moderate overlap{% else %}not computed{% endif %}</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Rain, 7d</span>
+      <strong class="metric-value">{{ a.rain_mm }}<span class="metric-unit">mm</span></strong>
+      <span class="metric-sub">subtracted from demand</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Total run time</span>
+      <strong class="metric-value">{{ recs|sum(attribute='minutes')|round(0)|int }}<span class="metric-unit">min</span></strong>
+      <span class="metric-sub">across all zones</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-head"><h2>Zone map</h2></div>
+      <figure class="compare">
+        <figure>
+          <img src="{{ url_for('media', filename=a.image_path) }}" alt="Original field imagery">
+          <figcaption>Imagery</figcaption>
+        </figure>
+        <figure>
+          <img src="{{ url_for('media', filename=a.zone_map_path) }}" alt="Clustered irrigation zones">
+          <figcaption>{{ a.k }} zones</figcaption>
+        </figure>
+      </figure>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Elbow method</h2><span class="mono muted">WCSS vs k</span></div>
+      <canvas id="elbow" width="520" height="300" aria-label="Elbow chart of WCSS against number of clusters"></canvas>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Irrigation recommendations</h2>
+      <span class="mono muted">soil tank model &middot; root depth 200 mm &middot; 15 mm/h</span>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Zone</th><th>Soil</th><th>Moisture</th><th>Deficit</th>
+            <th>Water needed</th><th>Run time</th><th>Field area</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recs %}
+          <tr>
+            <td><span class="zone-dot zone-dot-{{ r.zone }}"></span><strong>Z{{ r.zone }}</strong></td>
+            <td>{{ r.soil }}</td>
+            <td class="mono">{{ (r.moisture * 100)|round(1) }}%</td>
+            <td class="mono">{{ r.deficit_mm }} mm</td>
+            <td class="mono">{{ r.water_mm }} mm</td>
+            <td class="mono"><strong>{{ r.minutes }} min</strong></td>
+            <td class="mono">{{ r.area_pct }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const kRange = {{ k_range | tojson }};
+  const wcss = {{ wcss | tojson }};
+  const canvas = document.getElementById("elbow");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height, pad = 48;
+  const maxW = Math.max(...wcss), minW = Math.min(...wcss);
+  const range = (maxW - minW) || 1;
+  const x = i => pad + (i * (W - 2 * pad)) / Math.max(1, kRange.length - 1);
+  const y = v => H - pad - ((v - minW) / range) * (H - 2 * pad);
+
+  const grid = getComputedStyle(document.documentElement);
+  const line = grid.getPropertyValue("--field").trim() || "#2F6B3D";
+  const muted = grid.getPropertyValue("--muted").trim() || "#6B776D";
+
+  ctx.strokeStyle = "#E2E6E0";
+  ctx.lineWidth = 1;
+  for (let g = 0; g <= 4; g++) {
+    const gy = pad + (g * (H - 2 * pad)) / 4;
+    ctx.beginPath(); ctx.moveTo(pad, gy); ctx.lineTo(W - pad, gy); ctx.stroke();
+  }
+
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  wcss.forEach((v, i) => (i === 0 ? ctx.moveTo(x(i), y(v)) : ctx.lineTo(x(i), y(v))));
+  ctx.stroke();
+
+  ctx.fillStyle = line;
+  wcss.forEach((v, i) => {
+    ctx.beginPath(); ctx.arc(x(i), y(v), 5, 0, Math.PI * 2); ctx.fill();
+  });
+
+  ctx.fillStyle = muted;
+  ctx.font = "12px 'IBM Plex Mono', monospace";
+  ctx.textAlign = "center";
+  kRange.forEach((k, i) => ctx.fillText(String(k), x(i), H - pad + 20));
+  ctx.fillText("zones (k)", W / 2, H - 8);
+  ctx.save();
+  ctx.translate(14, H / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText("within-cluster sum of squares", 0, 0);
+  ctx.restore();
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Server error — Smart Eco-VRI{% endblock %}
+{% block content %}
+<div class="container page center-page">
+  <p class="eyebrow">Error 500</p>
+  <h1>Something broke mid-run</h1>
+  <p class="muted">The server hit an unexpected error. Your data is safe — try again, or reload the page.</p>
+  <div class="page-actions" style="justify-content:center">
+    <a href="{{ url_for('index') }}" class="btn btn-primary">Back home</a>
+    <a href="javascript:location.reload()" class="btn btn-line">Reload</a>
+  </div>
+</div>
+{% endblock %}

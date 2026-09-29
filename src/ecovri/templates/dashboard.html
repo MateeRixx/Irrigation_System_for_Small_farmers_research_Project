@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Smart Eco-VRI{% endblock %}
+{% block content %}
+<div class="container page">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Overview</p>
+      <h1>Dashboard</h1>
+    </div>
+    <a href="{{ url_for('analyze') }}" class="btn btn-primary"><i data-lucide="plus"></i>New analysis</a>
+  </div>
+
+  <div class="stat-cards">
+    <div class="stat-card">
+      <span class="stat-card-icon"><i data-lucide="map-pin"></i></span>
+      <div><strong>{{ farms|length }}</strong><span>farms registered</span></div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-card-icon"><i data-lucide="satellite"></i></span>
+      <div><strong>{{ analyses|length }}</strong><span>analyses run</span></div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-card-icon"><i data-lucide="gauge"></i></span>
+      <div>
+        <strong>{% if analyses and analyses[0].silhouette is not none %}{{ '%.2f'|format(analyses[0].silhouette) }}{% else %}—{% endif %}</strong>
+        <span>latest silhouette score</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-head">
+        <h2>7-day rain outlook</h2>
+        <span class="mono muted" id="weather-loc">—</span>
+      </div>
+      <div class="weather-chart" id="weather-chart" data-lat="{{ farms[0].lat if farms else 26.9157 }}" data-lon="{{ farms[0].lon if farms else 70.9083 }}">
+        <p class="muted">Loading forecast…</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>My farms</h2>
+        <button type="button" class="btn btn-line btn-sm" id="toggle-farm">
+          <i data-lucide="plus"></i>Add farm
+        </button>
+      </div>
+
+      <form class="farm-form is-hidden" id="farm-form" method="POST" action="{{ url_for('add_farm') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+          <label for="farm-name">Farm name</label>
+          <input type="text" id="farm-name" name="name" placeholder="e.g. North plot" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="farm-lat">Latitude</label>
+            <input type="number" step="any" id="farm-lat" name="lat" value="26.9157">
+          </div>
+          <div class="form-group">
+            <label for="farm-lon">Longitude</label>
+            <input type="number" step="any" id="farm-lon" name="lon" value="70.9083">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Save farm</button>
+      </form>
+
+      <ul class="farm-list">
+        {% for f in farms %}
+        <li class="farm-row">
+          <a href="{{ url_for('farm_detail', farm_id=f.id) }}" class="farm-item">
+            <span class="farm-item-icon"><i data-lucide="map-pin"></i></span>
+            <span class="farm-item-body">
+              <strong>{{ f.name }}</strong>
+              <span class="mono">{{ f.lat }}, {{ f.lon }}</span>
+            </span>
+            <i data-lucide="chevron-right" class="farm-item-arrow"></i>
+          </a>
+          <form method="POST" action="{{ url_for('delete_farm', farm_id=f.id) }}"
+                class="row-delete"
+                onsubmit="return confirm('Delete farm “{{ f.name }}” and ALL its analyses? This cannot be undone.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-ghost btn-sm" title="Delete farm" aria-label="Delete farm {{ f.name }}">
+              <i data-lucide="trash-2"></i>
+            </button>
+          </form>
+        </li>
+        {% else %}
+        <li class="empty">
+          <p>No farms yet.</p>
+          <p class="muted">Add one to attach your analyses to a known location.</p>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head"><h2>Recent analyses</h2></div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>Farm</th><th>Zones</th><th>Silhouette</th><th>Rain</th><th>When</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for a in analyses %}
+          <tr>
+            <td>{{ a.farm_name or 'Standalone' }}</td>
+            <td><span class="badge">{{ a.k }}</span></td>
+            <td class="mono {% if a.silhouette and a.silhouette >= 0.5 %}score-good{% elif a.silhouette and a.silhouette < 0.25 %}score-weak{% endif %}">
+              {{ '%.3f'|format(a.silhouette) if a.silhouette is not none else '—' }}
+            </td>
+            <td class="mono">{{ a.rain_mm }} mm</td>
+            <td class="mono muted">{{ a.created_at[:16].replace('T',' ') }}</td>
+            <td class="row-action">
+              <a href="{{ url_for('analysis_detail', analysis_id=a.id) }}" class="btn btn-sm">View</a>
+              <form method="POST" action="{{ url_for('delete_analysis', analysis_id=a.id) }}"
+                    class="row-delete"
+                    onsubmit="return confirm('Delete this analysis? This cannot be undone.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ url_for('dashboard') }}">
+                <button type="submit" class="btn btn-ghost btn-sm" title="Delete analysis" aria-label="Delete analysis">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="empty">
+            <p>No analyses yet.</p>
+            <p class="muted">Draw a field on the map to run the first one.</p>
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const t = document.getElementById('toggle-farm');
+  const f = document.getElementById('farm-form');
+  if (t) t.addEventListener('click', () => f.classList.toggle('is-hidden'));
+
+  // 7-day rain outlook
+  (function () {
+    const box = document.getElementById('weather-chart');
+    const lat = box.dataset.lat, lon = box.dataset.lon;
+    fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('weather-loc').textContent =
+          `${Number(lat).toFixed(3)}, ${Number(lon).toFixed(3)}`;
+        const days = data.daily || [];
+        if (!days.length) { box.innerHTML = '<p class="muted">Forecast unavailable right now.</p>'; return; }
+        const max = Math.max(1, ...days.map(d => d.mm));
+        const total = data.rain_7d_mm;
+        box.innerHTML =
+          `<div class="wx-bars">` +
+          days.map(d => {
+            const pct = Math.round((d.mm / max) * 100);
+            const day = new Date(d.date + 'T00:00:00')
+              .toLocaleDateString('en', { weekday: 'short' });
+            const dom = d.date.slice(8);
+            return `<div class="wx-bar" title="${d.mm} mm">
+                      <span class="wx-val">${d.mm > 0 ? d.mm : ''}</span>
+                      <span class="wx-stick ${d.mm > 5 ? 'wx-heavy' : d.mm > 0 ? 'wx-light' : 'wx-none'}" style="height:${d.mm > 0 ? Math.max(6, pct) : 3}%"></span>
+                      <span class="wx-day">${day}</span>
+                      <span class="wx-date">${dom}</span>
+                    </div>`;
+          }).join('') +
+          `</div>
+           <p class="wx-total mono">${total} mm total · ${total > 5 ? 'consider reducing run times' : 'low rain — irrigate normally'}</p>`;
+      })
+      .catch(() => { box.innerHTML = '<p class="muted">Forecast unavailable right now.</p>'; });
+  })();
+</script>
+{% endblock %}

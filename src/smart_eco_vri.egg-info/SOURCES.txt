@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+src/ecovri/__init__.py
+src/ecovri/app.py
+src/ecovri/zoning_engine.py
+src/smart_eco_vri.egg-info/PKG-INFO
+src/smart_eco_vri.egg-info/SOURCES.txt
+src/smart_eco_vri.egg-info/dependency_links.txt
+src/smart_eco_vri.egg-info/requires.txt
+src/smart_eco_vri.egg-info/top_level.txt
+tests/test_app.py

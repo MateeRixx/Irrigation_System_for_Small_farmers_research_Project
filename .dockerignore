@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+.pytest_cache
+__pycache__
+*.pyc
+data
+irrigation.db
+static/uploads
+static/results
+tests
+*.pdf
+zones_output_real.png

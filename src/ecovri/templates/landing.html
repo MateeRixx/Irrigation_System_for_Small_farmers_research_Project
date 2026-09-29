@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Smart Eco-VRI — Satellite irrigation zoning{% endblock %}
+{% block content %}
+
+<section class="hero">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">VARI &middot; K-MEANS &middot; OPEN-METEO</p>
+      <h1>Draw irrigation zones from satellite imagery.</h1>
+      <p class="lede">
+        Select your field on satellite view, and Eco-VRI clusters it into the
+        fewest zones worth watering — each with a soil profile, water deficit
+        and run time, adjusted for the week&rsquo;s rain.
+      </p>
+      <div class="hero-actions">
+        <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Create an account</a>
+        <a href="#how" class="btn btn-line btn-lg">How it works <i data-lucide="arrow-down"></i></a>
+      </div>
+    </div>
+
+    <div class="hero-visual" aria-label="Aerial field with irrigation zone overlay">
+      <img class="hero-photo"
+           src="https://images.unsplash.com/photo-1514864151880-d1bef4892f29?w=1400&q=80&auto=format&fit=crop"
+           alt="Aerial view of smallholder farm plots">
+      <svg class="hero-zones" viewBox="0 0 600 400" preserveAspectRatio="none" aria-hidden="true">
+        <polygon points="0,0 252,0 231,171 0,148" fill="#1F77B4" opacity=".5"/>
+        <polygon points="252,0 600,0 600,118 231,171" fill="#2CA02C" opacity=".5"/>
+        <polygon points="0,148 231,171 262,400 0,400" fill="#FF7F0E" opacity=".5"/>
+        <polygon points="231,171 600,118 600,400 262,400" fill="#1F77B4" opacity=".38"/>
+        <g fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="7 5" opacity=".9">
+          <path d="M252 0 L231 171 L262 400"/>
+          <path d="M0 148 L231 171 L600 118"/>
+        </g>
+      </svg>
+      <span class="hud-tag hud-tl">26.9157&deg;N 70.9083&deg;E</span>
+      <span class="hud-tag hud-br">k = 3 &middot; elbow selected</span>
+      <div class="hero-tags">
+        <span class="zone-callout zc-1">Z1 &middot; sandy &middot; 24 min</span>
+        <span class="zone-callout zc-2">Z2 &middot; loamy &middot; 64 min</span>
+        <span class="zone-callout zc-3">Z3 &middot; clayey &middot; 104 min</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <dl class="stat-strip">
+      <div class="stat"><dt>&lt; $90</dt><dd>complete hardware cost</dd></div>
+      <div class="stat"><dt>1 image</dt><dd>to zone a whole field</dd></div>
+      <div class="stat"><dt>Auto k</dt><dd>elbow method picks zones</dd></div>
+      <div class="stat"><dt>7-day</dt><dd>rain forecast, auto-skip</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="container">
+    <p class="eyebrow">Workflow</p>
+    <h2 class="section-title">From satellite pass to sprinkler schedule</h2>
+    <ol class="steps">
+      <li class="step">
+        <span class="step-num">01</span>
+        <span class="step-icon"><i data-lucide="map"></i></span>
+        <h3>Pick your field</h3>
+        <p>Search your farm on satellite imagery and draw its boundary — or upload a screenshot if you already have one.</p>
+      </li>
+      <li class="step">
+        <span class="step-num">02</span>
+        <span class="step-icon"><i data-lucide="cpu"></i></span>
+        <h3>Let the pixels split it</h3>
+        <p>A vegetation index runs over the image, and K-Means with elbow detection decides how many zones your field actually needs.</p>
+      </li>
+      <li class="step">
+        <span class="step-num">03</span>
+        <span class="step-icon"><i data-lucide="droplets"></i></span>
+        <h3>Water only what&rsquo;s dry</h3>
+        <p>Every zone gets a soil type, deficit and run time. Seven-day rain is subtracted before a single valve opens.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container split">
+    <div class="split-media">
+      <img src="https://images.unsplash.com/photo-1475082622110-f0e90ff503ff?w=1200&q=80&auto=format&fit=crop"
+           alt="Aerial view of green farm fields divided by a road" loading="lazy">
+      <span class="media-caption">Sentinel-grade imagery, drawn live in your browser</span>
+    </div>
+    <div class="split-copy">
+      <p class="eyebrow">Field selection</p>
+      <h2 class="section-title">Navigate, outline, analyze</h2>
+      <p class="split-text">
+        The analyzer opens on satellite view. Fly to your farm, draw a rectangle
+        over the plot, and the backend pulls that exact imagery window for
+        clustering — coordinates, area in hectares, and weather come along with it.
+      </p>
+      <ul class="check-list">
+        <li><i data-lucide="check"></i>Live satellite basemap, no API key needed</li>
+        <li><i data-lucide="check"></i>Place search anywhere in the world</li>
+        <li><i data-lucide="check"></i>Selection area measured in hectares as you draw</li>
+      </ul>
+      <a href="{{ url_for('register') }}" class="btn btn-primary">Open the analyzer</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features">
+  <div class="container">
+    <p class="eyebrow">Built for the field</p>
+    <h2 class="section-title">What runs behind the map</h2>
+    <div class="feature-grid">
+      <article class="feature">
+        <span class="feature-icon"><i data-lucide="cloud-rain"></i></span>
+        <h3>Rain-aware scheduling</h3>
+        <p>A seven-day precipitation forecast is subtracted from every zone&rsquo;s need. Heavy rain skips the cycle before a valve ever opens.</p>
+      </article>
+      <article class="feature">
+        <span class="feature-icon"><i data-lucide="cpu"></i></span>
+        <h3>Built for the $90 controller</h3>
+        <p>JSON endpoints the ESP32 polls for its per-zone schedule, plus a moisture reading endpoint that posts back from the field.</p>
+      </article>
+      <article class="feature">
+        <span class="feature-icon"><i data-lucide="layout-dashboard"></i></span>
+        <h3>Every farm, one account</h3>
+        <p>Keep multiple fields with their own coordinates and analysis history. Zone maps and recommendations are stored, not thrown away.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="cta-banner">
+  <img src="https://images.unsplash.com/photo-1604808397353-36670a4b679d?w=1600&q=80&auto=format&fit=crop"
+       alt="Farmland at golden hour" loading="lazy">
+  <div class="cta-overlay">
+    <div class="container cta-inner">
+      <div>
+        <p class="eyebrow eyebrow-light">Start small</p>
+        <h2>One field is enough to see the difference.</h2>
+      </div>
+      <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Create an account</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" width="22" height="22"><rect width="64" height="64" rx="14" fill="#2F6B3D"/><path d="M32 48V24" stroke="white" stroke-width="4" stroke-linecap="round"/><path d="M32 34c-9 0-14-7-14-16 9 0 14 7 14 16zm0 6c9 0 14-7 14-18-9 0-14 8-14 18z" fill="white"/></svg>
+      </span>
+      <span>Smart Eco-VRI</span>
+    </div>
+    <p class="footer-meta">Precision irrigation for smallholder farms &middot; MIT License &middot; <a href="{{ url_for('methodology') }}">Methodology</a> &middot; Imagery: Esri World Imagery</p>
+  </div>
+</footer>
+{% endblock %}

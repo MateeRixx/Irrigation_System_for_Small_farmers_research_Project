@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Log in — Smart Eco-VRI{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+{% block content %}
+<div class="auth-split">
+  <div class="auth-panel">
+    <div class="auth-form-wrap">
+      <p class="eyebrow">Field operations</p>
+      <h1>Welcome back</h1>
+      <p class="auth-sub">Log in to reach your farms and analyses.</p>
+
+      <form method="POST" class="auth-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label for="username">Username or email</label>
+        <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+        <button type="submit" class="btn btn-primary btn-block">Log in</button>
+      </form>
+
+      <p class="auth-switch">No account yet? <a href="{{ url_for('register') }}">Create one</a></p>
+      <p class="auth-demo">Demo: <code>admin</code> / <code>admin123</code></p>
+    </div>
+  </div>
+
+  <aside class="auth-aside">
+    <img src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=1200&q=80&auto=format&fit=crop"
+         alt="Farmers working a paddy field">
+    <div class="auth-aside-caption">
+      <span class="hud-tag">Jaisalmer &middot; 2.4 ha &middot; 3 zones</span>
+      <p>Precision irrigation, priced for the fields it serves.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

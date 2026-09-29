@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Map analyzer — Smart Eco-VRI{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<div class="container page page-wide">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Analysis</p>
+      <h1>Map analyzer</h1>
+      <p class="muted">Find your field on satellite view, outline it, then run the zoning.</p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('methodology') }}" class="btn btn-line"><i data-lucide="book-open"></i>Methodology</a>
+    </div>
+  </div>
+
+  <div class="analyzer">
+    <div class="analyzer-map card-flush">
+      <div class="map-toolbar">
+        <div class="map-search">
+          <i data-lucide="search"></i>
+          <input type="text" id="place-search" placeholder="Search a place — e.g. Jipur, Rajasthan"
+                 autocomplete="off" spellcheck="false">
+          <button type="button" id="place-go" class="btn btn-sm">Search</button>
+        </div>
+        <div class="map-tools">
+          <button type="button" id="btn-draw" class="btn btn-primary btn-sm">
+            <i data-lucide="square"></i><span>Rectangle</span>
+          </button>
+          <button type="button" id="btn-poly" class="btn btn-line btn-sm">
+            <i data-lucide="pentagon"></i><span>Polygon</span>
+          </button>
+          <button type="button" id="btn-clear" class="btn btn-line btn-sm">
+            <i data-lucide="trash-2"></i><span>Clear</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="map" role="application" aria-label="Satellite map for selecting a field"></div>
+
+      <div class="map-hud" id="map-hud" hidden>
+        <div class="hud-cell"><span>NW</span><strong id="hud-nw">—</strong></div>
+        <div class="hud-cell"><span>SE</span><strong id="hud-se">—</strong></div>
+        <div class="hud-cell"><span>Center</span><strong id="hud-center">—</strong></div>
+        <div class="hud-cell hud-area"><span>Area</span><strong id="hud-area">—</strong></div>
+      </div>
+
+      <p class="map-hint" id="map-hint">Loading…</p>
+    </div>
+
+    <aside class="analyzer-side">
+      <div class="side-tabs" role="tablist">
+        <button class="side-tab is-active" id="tab-map" role="tab" aria-selected="true">
+          <i data-lucide="map"></i>Satellite map
+        </button>
+        <button class="side-tab" id="tab-upload" role="tab" aria-selected="false">
+          <i data-lucide="upload"></i>Upload image
+        </button>
+      </div>
+
+      <div class="side-body" id="panel-map">
+        <div class="form-group">
+          <label for="farm_id">Attach to farm</label>
+          <select id="farm_id">
+            <option value="0">Standalone (no farm)</option>
+            {% for f in farms %}<option value="{{ f.id }}">{{ f.name }}</option>{% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="force_k">Number of zones <span class="label-hint">blank = auto</span></label>
+          <input type="number" id="force_k" min="2" max="9" placeholder="Auto (elbow method)">
+        </div>
+
+        <div class="side-info">
+          <div class="side-info-row"><span>Selection</span><strong id="sel-status">None yet</strong></div>
+          <div class="side-info-row"><span>Shape</span><strong id="sel-shape">—</strong></div>
+          <div class="side-info-row"><span>Imagery</span><strong>Esri World Imagery</strong></div>
+          <div class="side-info-row"><span>Weather</span><strong>Open-Meteo, 7-day</strong></div>
+        </div>
+
+        <button type="button" id="btn-run" class="btn btn-primary btn-block" disabled>
+          <i data-lucide="play"></i><span>Run analysis</span>
+        </button>
+        <p class="side-note">The exact imagery inside your outline is fetched and clustered on the server.</p>
+      </div>
+
+      <div class="side-body is-hidden" id="panel-upload">
+        <form method="POST" enctype="multipart/form-data" id="upload-form"
+              action="{{ url_for('analyze') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="form-group">
+            <label for="image">Field image <span class="label-hint">PNG / JPG / WEBP</span></label>
+            <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.webp" required>
+          </div>
+          <div class="form-group">
+            <label for="up-farm">Attach to farm</label>
+            <select id="up-farm" name="farm_id">
+              <option value="0">Standalone (no farm)</option>
+              {% for f in farms %}<option value="{{ f.id }}">{{ f.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="up-k">Number of zones <span class="label-hint">blank = auto</span></label>
+            <input type="number" name="force_k" min="2" max="9" placeholder="Auto (elbow method)">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">
+            <i data-lucide="play"></i><span>Run analysis</span>
+          </button>
+        </form>
+        <p class="side-note">Use a Google Earth screenshot or any aerial photo of the plot.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="run-overlay is-hidden" id="run-overlay" role="status" aria-live="polite">
+  <div class="run-box">
+    <div class="spinner" aria-hidden="true"></div>
+    <h3 id="run-title">Running analysis</h3>
+    <ol class="run-steps">
+      <li class="run-step"><span class="run-step-dot"></span><span class="run-step-label">Fetching satellite imagery</span></li>
+      <li class="run-step"><span class="run-step-dot"></span><span class="run-step-label">Clustering pixels (K-Means)</span></li>
+      <li class="run-step"><span class="run-step-dot"></span><span class="run-step-label">Scoring zones &amp; pulling weather</span></li>
+    </ol>
+    <p class="run-error is-hidden" id="run-error"></p>
+    <button type="button" class="btn btn-ghost btn-sm" id="run-cancel">Cancel</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  window.ECOVRI = {
+    farms: [{% for f in farms %}{ id: {{ f.id }}, lat: {{ f.lat }}, lon: {{ f.lon }}, name: {{ f.name|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}],
+    endpoints: { run: "{{ url_for('analyze_map') }}" }
+  };
+</script>
+<script src="{{ url_for('static', filename='map.js') }}"></script>
+{% endblock %}
